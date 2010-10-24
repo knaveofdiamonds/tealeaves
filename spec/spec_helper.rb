@@ -4,6 +4,8 @@ require 'tealeaves'
 require 'spec'
 require 'spec/autorun'
 
+include TeaLeaves
+
 Spec::Runner.configure do |config|
   
 end
