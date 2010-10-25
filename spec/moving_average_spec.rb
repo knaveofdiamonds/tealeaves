@@ -41,3 +41,16 @@ describe "a Weighted Moving Average" do
     MovingAverage.weighted([0.6, 0.3, 0.1], false).weights == [0.6, 0.3, 0.1]
   end
 end
+
+describe "a Mutliple Moving Average" do
+  it "should combine weights in the 3x3 case" do
+    MovingAverage.multiple(3,3).weights.should == [1.0/9, 2.0/9, 3.0/9, 2.0/9, 1.0/9]
+  end
+
+  it "should combine weights in the 3x5 case" do
+    [1,1,1,1,1,0,0]
+    [0,1,1,1,1,1,0]
+    [0,0,1,1,1,1,1]
+    MovingAverage.multiple(3,5).weights.should == [1.0/15, 2.0/15, 0.2, 0.2, 0.2, 2.0/15, 1.0/15]
+  end
+end

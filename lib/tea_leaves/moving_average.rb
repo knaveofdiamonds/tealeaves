@@ -32,12 +32,22 @@ module TeaLeaves
         new weights
       end
 
+      def multiple(m,n)
+        divisor = (m * n).to_f
+        weights = (1..m).map {|i| i / divisor }
+        extra_right_terms = ((m + n) / 2) - m
+        extra_right_terms = 0 if extra_right_terms < 0
+        extra_right_terms.times { weights << weights.last }
+
+        new(expand_weights(weights.reverse))
+      end
+
       private
 
       def expand_weights(weights)
-        left_side_weights = weights.clone
-        left_side_weights.shift
-        left_side_weights.reverse + weights
+        left_side_weights = weights.reverse
+        left_side_weights.pop
+        left_side_weights + weights
       end
     end
 
