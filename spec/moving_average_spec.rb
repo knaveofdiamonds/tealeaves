@@ -10,11 +10,11 @@ describe "a Simple Moving Average" do
   it "should raise an ArgumentError if number of terms is < 1" do
     lambda { MovingAverage.simple(0) }.should raise_error(ArgumentError)
   end
-
+  
   it "should have equal weights with an odd number of terms" do
     MovingAverage.simple(5).weights.should == [0.2, 0.2, 0.2, 0.2, 0.2]
   end
-
+  
   it "should have have half weights at the ends with an even number of terms" do
     MovingAverage.simple(4).weights.should == [0.125, 0.25, 0.25, 0.25, 0.125]
   end
@@ -33,7 +33,11 @@ describe "a Simple Moving Average" do
 end
 
 describe "a Weighted Moving Average" do
-  it "should have symmetric weights when provided with half the list of weights" do
+  it "should have symmetric weights by default when provided with half the list of weights" do
     MovingAverage.weighted([0.6, 0.3, 0.1]).weights == [0.1, 0.3, 0.6, 0.3, 0.1]
+  end
+
+  it "should have allow asymmetric weights" do
+    MovingAverage.weighted([0.6, 0.3, 0.1], false).weights == [0.6, 0.3, 0.1]
   end
 end

@@ -1,36 +1,35 @@
-module TeaLeaves
+module TeaLeaves  
+  # A calculator for simple & weighted moving averages.
   class MovingAverage
     attr_reader :weights, :number_of_terms
 
     class << self
-      # Returns a moving average object given a number of terms, a
-      # specialized weighting method symbol or an array of weights.
+      # Returns a Weighted Moving Average calculator, given a list of
+      # weights. 
       #
-      # 
-      def get(average_specifier)
-        if average_specifier.kind_of?(Array)
-          weighted(average_specifier)
-        elsif average_specifier.kind_of?(Integer)
-          simple(average_specifier)
-        else
-          raise ArgumentError.new("Unknown weights")
-        end
-      end
-      
-      def weighted(weights)
-        new expand_weights(weights)
+      # By default the weights are assumed to be symmetric and are
+      # reflected (so you don't need to repeat weights). If symmetric
+      # is false then the weights are assumed to be complete.
+      #
+      # Examples:
+      #
+      #    MovingAverage.weighted([0.6, 0.2]).weights # => [0.2, 0.6, 0.2]
+      #    MovingAverage.weighted([0.2, 0.7, 0.1], false) # => [0.2, 0.7, 0.1]
+      def weighted(weights, symmetric=true)
+        new(symmetric ? expand_weights(weights) : weights)
       end
 
+      # Returns a Simple Moving Average calculator, given a number of
+      # terms/points to average over.
+      # 
+      # Examples:
+      #  
+      #    MovingAverage.simple(5).weights # => [0.2, 0.2, 0.2, 0.2, 0.2]
+      # 
       def simple(n)
         raise ArgumentError.new("Number of terms must be positive") if n < 1
-        
-        if n.odd?
-          weights = [1.0 / n] * ((n / 2) + 1)
-        else
-          weights = [1.0 / n] * (n / 2) + [1.0 / (2 * n)]
-        end
-
-        new expand_weights(weights)
+        weights = n.odd?() ? [1.0 / n] * n : expand_weights([1.0 / n] * (n / 2) + [1.0 / (2 * n)])
+        new weights
       end
 
       private
@@ -42,12 +41,19 @@ module TeaLeaves
       end
     end
 
+    # Creates a new MovingAverage given a list of weights.
+    #
+    # See also the class methods simple and weighted.
     def initialize(weights)
       @weights = weights
       @number_of_terms = @weights.length
       @each_side = @weights.length / 2
     end
     
+    # Calculates the moving average for the given array of numbers.
+    #
+    # Moving averages cannot include terms at the beginning or end of
+    # the array, so there will be fewer numbers than in the original array.
     def calculate(array)
       return [] if number_of_terms > array.length
       
@@ -58,15 +64,32 @@ module TeaLeaves
     
     private
     
+    # Returns a sliding window of indexes based on a center index, i
+    # and the number of terms.
     def window(i)
       (i - @each_side)..(i + @each_side)
     end
   end
 
   module ArrayMethods
+    # Returns a moving average for this array, given either a number
+    # of terms or a half-list of weights (so the weights will be
+    # symmetric).
+    #
+    # See MovingAverage for more detail.
+    # 
     def moving_average(average_specifier)
       return self if average_specifier == 1
-      MovingAverage.get(average_specifier).calculate(self)
+
+      if average_specifier.kind_of?(Array)
+        avg = MovingAverage.weighted(average_specifier)
+      elsif average_specifier.kind_of?(Integer)
+        avg = MovingAverage.simple(average_specifier)
+      else
+        raise ArgumentError.new("Unknown weights")
+      end
+      
+      avg.calculate(self)
     end
   end
 end
