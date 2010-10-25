@@ -11,10 +11,14 @@ module TeaLeaves
       # reflected (so you don't need to repeat weights). If symmetric
       # is false then the weights are assumed to be complete.
       #
+      # The start of the array of weights is the center weight for the
+      # symmetric MA.
+      #
       # Examples:
       #
       #    MovingAverage.weighted([0.6, 0.2]).weights # => [0.2, 0.6, 0.2]
       #    MovingAverage.weighted([0.2, 0.7, 0.1], false) # => [0.2, 0.7, 0.1]
+      #
       def weighted(weights, symmetric=true)
         new(symmetric ? expand_weights(weights) : weights)
       end
@@ -32,12 +36,19 @@ module TeaLeaves
         new weights
       end
 
+
+      # Returns a moving average of a moving average calculator.
+      #
+      # For Example, for a 3x3 MA:
+      # 
+      #     MovingAverage.multiple(3,3).weights #=> [1/9, 2/9, 1/3, 2/9, 1/9]
+      #
       def multiple(m,n)
         divisor = (m * n).to_f
         weights = (1..m).map {|i| i / divisor }
-        extra_right_terms = ((m + n) / 2) - m
-        extra_right_terms = 0 if extra_right_terms < 0
-        extra_right_terms.times { weights << weights.last }
+        num_of_center_weights = ((m + n) / 2) - m
+        num_of_center_weights = 0 if num_of_center_weights < 0
+        num_of_center_weights.times { weights << weights.last }
 
         new(expand_weights(weights.reverse))
       end
@@ -62,8 +73,8 @@ module TeaLeaves
     
     # Calculates the moving average for the given array of numbers.
     #
-    # Moving averages cannot include terms at the beginning or end of
-    # the array, so there will be fewer numbers than in the original array.
+    # Moving averages won't include values for terms at the beginning or end of
+    # the array, so there will be fewer numbers than in the original.
     def calculate(array)
       return [] if number_of_terms > array.length
       
