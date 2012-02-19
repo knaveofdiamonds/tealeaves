@@ -8,9 +8,9 @@ describe TeaLeaves::ExponentialSmoothingForecast do
     @options  = {
       :seasonality => :additive,
       :trend => :additive,
-      :alpha => 0.9,
-      :beta => 0.9,
-      :gamma => 0.0
+      :alpha => 0.7,
+      :beta => 0.1,
+      :gamma => 0.1
     }
     @forecast = described_class.new(@time_series, 4, @options)
   end
@@ -66,6 +66,12 @@ describe TeaLeaves::ExponentialSmoothingForecast do
     expected_values = [371.29, 414.64, 471.43, 399.3, 423.11, 506.60, 589.26, 471.93]
     @forecast.one_step_ahead_forecasts.drop(4).zip(expected_values).each do |(observed, expected)|
       observed.should be_within(0.03).of(expected)
+    end
+  end
+
+  it "should predict new values" do
+    @forecast.predict(4).zip([6.9, 8.4, 9.9, 12.5]).each do |(observed, expected)|
+      observed.should be_within(0.1).of(expected)
     end
   end
 end

@@ -3,8 +3,11 @@ require 'tealeaves/forecast'
 module TeaLeaves
   class ExponentialSmoothingForecast < Forecast
     class SeasonalityStrategy
-      def initialize(gamma)
+      attr_reader :start_index
+
+      def initialize(period, gamma)
         @gamma = gamma
+        @start_index = period
       end
 
       def new_values(observed_value, parameters, new_level)
@@ -23,8 +26,9 @@ module TeaLeaves
         value - new_level
       end
 
-      def apply(forecast, parameters)
-        forecast + parameters[:seasonality].first
+      def apply(forecast, parameters, n)
+        index = (n - 1) % parameters[:seasonality].size
+        forecast + parameters[:seasonality][index]
       end
     end
 
@@ -37,8 +41,9 @@ module TeaLeaves
         value / new_level
       end
 
-      def apply(forecast, parameters)
-        forecast * parameters[:seasonality].first
+      def apply(forecast, parameters, n)
+        index = (n - 1) % parameters[:seasonality].size
+        forecast * parameters[:seasonality][index]
       end
     end
     
@@ -52,6 +57,10 @@ module TeaLeaves
       
       def new_values(*args)
         []
+      end
+
+      def start_index
+        1
       end
 
       def apply(forecast, parameters)
@@ -68,13 +77,17 @@ module TeaLeaves
       @seasonality = opts[:seasonality]
       @seasonality_strategy = case @seasonality
                               when :none
-                                NoSeasonalityStrategy.new(opts[:gamma])
+                                NoSeasonalityStrategy.new(@period, opts[:gamma])
                               when :additive
-                                AdditiveSeasonalityStrategy.new(opts[:gamma])
+                                AdditiveSeasonalityStrategy.new(@period, opts[:gamma])
                               when :multiplicative
-                                MultiplicativeSeasonalityStrategy.new(opts[:gamma])
+                                MultiplicativeSeasonalityStrategy.new(@period, opts[:gamma])
                               end
+
+      calculate_one_step_ahead_forecasts
     end
+
+    attr_reader :model_parameters
 
     def initial_level
       @initial_level ||= @time_series.take(@period).inject(&:+).to_f / @period
@@ -94,21 +107,33 @@ module TeaLeaves
       { :level => initial_level,
         :trend => initial_trend,
         :seasonality => initial_seasonal_indices,
-        :index => @period
+        :index => @seasonality_strategy.start_index
       }
     end
 
-    def one_step_ahead_forecasts
-      forecasts = [nil] * @period
+    def predict(n=nil)
+      if n.nil?
+        forecast(@model_parameters)
+      else
+        (1..n).map {|i| forecast(@model_parameters, i).first }
+      end
+    end
+
+    private
+
+    def calculate_one_step_ahead_forecasts
+      forecasts = [nil] * @seasonality_strategy.start_index
       parameters = initial_parameters
-      (@period...@time_series.size).each do |i|
+      (@seasonality_strategy.start_index...@time_series.size).each do |i|
         forecast, parameters = forecast(parameters)
         forecasts << forecast
       end
-      forecasts
+      parameters[:index] -= 1
+      @model_parameters = parameters
+      @one_step_ahead_forecasts = forecasts
     end
 
-    def forecast(parameters)
+    def forecast(parameters, n=1)
       new_params = {}
       new_params[:level] = new_level(parameters)
       new_params[:trend] = new_trend(parameters, new_params[:level])
@@ -119,12 +144,12 @@ module TeaLeaves
                      when :none
                        parameters[:level]
                      when :additive
-                       parameters[:level] + parameters[:trend]
+                       parameters[:level] + (n * parameters[:trend])
                      when :multiplicative
-                       parameters[:level] * parameters[:trend]
+                       parameters[:level] * (parameters[:trend] ** n)
                      end
 
-      forecast = @seasonality_strategy.apply(pre_forecast, parameters)
+      forecast = @seasonality_strategy.apply(pre_forecast, parameters, n)
       [forecast, new_params]
     end
 
