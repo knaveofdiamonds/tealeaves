@@ -1,7 +1,7 @@
 module TeaLeaves  
   # A calculator for simple & weighted moving averages.
   class MovingAverage
-    attr_reader :weights, :number_of_terms
+    attr_reader :weights, :span
 
     # Returns a Weighted Moving Average calculator, given a list of
     # weights. 
@@ -54,7 +54,6 @@ module TeaLeaves
     def initialize(weights)
       @weights = weights
       @span = @weights.length
-      @each_side = @span / 2
       check_weights
     end
     
@@ -65,19 +64,13 @@ module TeaLeaves
     def calculate(array)
       return [] if @span > array.length
       
-      (@each_side...(array.length - @each_side)).map do |i|
-        array[window(i)].zip(weights).map {|(a,b)| a * b }.inject {|a, b| a + b }
+      array.each_cons(@span).map do |window|
+        window.zip(weights).map {|(a,b)| a * b }.inject(&:+)
       end
     end
     
     private
     
-    # Returns a sliding window of indexes based on a center index, i
-    # and the number of terms.
-    def window(i)
-      (i - @each_side)..(i + @each_side)
-    end
-
     # Error checking for weights
     def check_weights
       raise ArgumentError.new("Weights should be an odd list") unless @span.odd?
@@ -96,8 +89,7 @@ module TeaLeaves
 
   module ArrayMethods
     # Returns a moving average for this array, given either a number
-    # of terms or a half-list of weights (so the weights will be
-    # symmetric).
+    # of terms or a list of weights.
     #
     # See MovingAverage for more detail.
     # 
