@@ -63,7 +63,7 @@ module TeaLeaves
         1
       end
 
-      def apply(forecast, parameters)
+      def apply(forecast, parameters, n)
         forecast
       end
     end
@@ -73,6 +73,7 @@ module TeaLeaves
       @period = period
       @alpha = opts[:alpha]
       @beta  = opts[:beta]
+      @gamma = opts[:gamma]
       @trend = opts[:trend]
       @seasonality = opts[:seasonality]
       @seasonality_strategy = case @seasonality
@@ -117,6 +118,14 @@ module TeaLeaves
       else
         (1..n).map {|i| forecast(@model_parameters, i).first }
       end
+    end
+
+    # Returns the mean squared error of the forecast.
+    def mean_squared_error
+      return @mean_squared_error if @mean_squared_error
+
+      numerator = errors.drop(@seasonality_strategy.start_index).map {|i| i ** 2 }.inject(&:+)
+      @mean_squared_error = numerator / (errors.size - @seasonality_strategy.start_index).to_f
     end
 
     private
