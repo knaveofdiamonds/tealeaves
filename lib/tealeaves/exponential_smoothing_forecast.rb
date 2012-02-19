@@ -2,14 +2,78 @@ require 'tealeaves/forecast'
 
 module TeaLeaves
   class ExponentialSmoothingForecast < Forecast
+    class SeasonalityStrategy
+      def initialize(gamma)
+        @gamma = gamma
+      end
+
+      def new_values(observed_value, parameters, new_level)
+        new_seasonality = @gamma * t(observed_value, new_level) + 
+          (1 - @gamma) * parameters[:seasonality].first
+        parameters[:seasonality].drop(1) << new_seasonality
+      end
+    end
+
+    class AdditiveSeasonalityStrategy < SeasonalityStrategy
+      def p(value, params)
+        value - params[:seasonality].first
+      end
+
+      def t(value, new_level)
+        value - new_level
+      end
+
+      def apply(forecast, parameters)
+        forecast + parameters[:seasonality].first
+      end
+    end
+
+    class MultiplicativeSeasonalityStrategy < SeasonalityStrategy
+      def p(value, params)
+        value / params[:seasonality].first
+      end
+
+      def t(value, new_level)
+        value / new_level
+      end
+
+      def apply(forecast, parameters)
+        forecast * parameters[:seasonality].first
+      end
+    end
+    
+    class NoSeasonalityStrategy < SeasonalityStrategy
+      def p(value, params)
+        value
+      end
+
+      def t(value, new_level)
+      end
+      
+      def new_values(*args)
+        []
+      end
+
+      def apply(forecast, parameters)
+        forecast
+      end
+    end
+
     def initialize(time_series, period, opts={})
       @time_series = time_series
       @period = period
       @alpha = opts[:alpha]
       @beta  = opts[:beta]
-      @gamma = opts[:gamma]
       @trend = opts[:trend]
       @seasonality = opts[:seasonality]
+      @seasonality_strategy = case @seasonality
+                              when :none
+                                NoSeasonalityStrategy.new(opts[:gamma])
+                              when :additive
+                                AdditiveSeasonalityStrategy.new(opts[:gamma])
+                              when :multiplicative
+                                MultiplicativeSeasonalityStrategy.new(opts[:gamma])
+                              end
     end
 
     def initial_level
@@ -60,15 +124,7 @@ module TeaLeaves
                        parameters[:level] * parameters[:trend]
                      end
 
-      forecast = case @seasonality
-                 when :none
-                   pre_forecast
-                 when :additive
-                   pre_forecast + parameters[:seasonality].first
-                 when :multiplicative
-                   pre_forecast * parameters[:seasonality].first
-                 end
-
+      forecast = @seasonality_strategy.apply(pre_forecast, parameters)
       [forecast, new_params]
     end
 
@@ -83,21 +139,13 @@ module TeaLeaves
     end
 
     def new_seasonality(parameters, new_level)
-      unless @seasonality == :none
-        new_seasonality = @gamma * t(parameters, new_level) + (1 - @gamma) * parameters[:seasonality].first
-        parameters[:seasonality].drop(1) << new_seasonality
-      end
+      @seasonality_strategy.new_values(@time_series[parameters[:index]],
+                                       parameters,
+                                       new_level)
     end
 
     def p(params)
-      case @seasonality
-      when :none
-        @time_series[params[:index]]
-      when :additive
-        @time_series[params[:index]] - params[:seasonality][0]
-      when :multiplicative
-        @time_series[params[:index]] / params[:seasonality][0]
-      end
+      @seasonality_strategy.p(@time_series[params[:index]], params)
     end
 
     def q(params)
@@ -117,15 +165,6 @@ module TeaLeaves
         new_level - params[:level]
       when :multiplicative
         new_level / params[:level]
-      end
-    end
-
-    def t(params, new_level)
-      case @seasonality
-      when :additive
-        @time_series[params[:index]] - new_level
-      when :multiplicative
-        @time_series[params[:index]] / new_level
       end
     end
   end
