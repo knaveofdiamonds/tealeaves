@@ -1,6 +1,29 @@
 = tealeaves
 
-Description goes here.
+{<img src="https://secure.travis-ci.org/knaveofdiamonds/tealeaves.png?branch=master" alt="Build Status" />}[http://travis-ci.org/knaveofdiamonds/tealeaves]
+
+Tealeaves is a simple forecasting toolset for ruby, able to product short term forecasts for time series data.
+
+It implements Exponential Smoothing methods, including those dealing with seasonality & trends, and has some basic functionality to determine optimal models.
+
+== Usage
+
+    require 'tealeaves'
+
+    # A set of time series data
+    data = [1.0, 3.3 ... 24.56]
+
+    # Period, for example 12 for monthly data
+    period = 12
+
+    # Get an 'optimal' model
+    TeaLeaves.optimal_model(data, period)
+
+    # Or next period's forecasts from the optimal model
+    TeaLeaves.forecast(data, period)
+
+    # Or the next n period's forecasts from the optimal model
+    TeaLeaves.forecast(data, period, 3)
 
 == Note on Patches/Pull Requests
  
