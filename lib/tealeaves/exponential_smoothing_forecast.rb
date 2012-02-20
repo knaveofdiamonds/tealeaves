@@ -68,6 +68,8 @@ module TeaLeaves
       end
     end
 
+    attr_reader :alpha, :beta, :gamma, :trend, :seasonality
+    
     def initialize(time_series, period, opts={})
       @time_series = time_series
       @period = period
@@ -88,6 +90,11 @@ module TeaLeaves
       calculate_one_step_ahead_forecasts
     end
 
+    def improve(opts)
+      new_opts = {:alpha => @alpha, :beta => @beta, :gamma => @gamma, :trend => @trend, :seasonality => @seasonality}.merge(opts)
+      self.class.new(@time_series, @period, new_opts)
+    end
+    
     attr_reader :model_parameters
 
     def initial_level
@@ -114,7 +121,7 @@ module TeaLeaves
 
     def predict(n=nil)
       if n.nil?
-        forecast(@model_parameters)
+        forecast(@model_parameters).first
       else
         (1..n).map {|i| forecast(@model_parameters, i).first }
       end
